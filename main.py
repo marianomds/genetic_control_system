@@ -7,7 +7,7 @@ from scipy.signal import zpk2tf
 
 # Default time vector parameters
 START_TIME = 0
-STOP_TIME = 5
+STOP_TIME = 20
 STEP_TIME = 0.01
 
 # Default limit values for controller parameters
@@ -37,6 +37,11 @@ def evolution(Gp, Time):
         # Create PI controller
         (Gc_num,Gc_den) = zpk2tf([Z],[0],K) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
         Gc = ctrl.tf(Gc_num,Gc_den)
+
+        # Evaluate closed loop stability
+        gm, pm, Wcg, Wcp = ctrl.margin(Gc*Gp)
+        if gm <= 1: # Only consider closed loop stable (gm > 0dB)
+            continue
 
         # Closed loop system
         M = ctrl.feedback(Gc*Gp,1)
