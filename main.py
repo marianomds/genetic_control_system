@@ -6,7 +6,10 @@ import numpy as np
 from scipy.signal import zpk2tf 
 
 # Create time vector to be used
-T = np.arange(0, 5, 0.01)
+start_time = 0
+stop_time = 5
+step_time = 0.01
+T = np.arange(start_time, stop_time, step_time)
 
 # Create Plant to be controlled
 Gp_den = np.convolve([1, 8], np.convolve([1, 1],[1, 2]))
@@ -40,6 +43,9 @@ if __name__ == "__main__":
 
     print('Overshoot: %f %%' % ((y3.max() - y3[-1])*100))
 
+    rt = next(x[0] for x in enumerate(y3) if x[1] > y3[-1])
+    print('Rise time: %1.2f sec' % (rt*step_time))
+    
     # Plot result
     plt.plot(T1, y1, T2, y2, T3, y3)
     plt.show()
