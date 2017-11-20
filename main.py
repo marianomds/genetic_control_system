@@ -15,8 +15,8 @@ T = np.arange(start_time, stop_time, step_time)
 (Gp_num,Gp_den) = zpk2tf([],[-1, -2, -8],1)
 Gp = ctrl.tf(Gp_num,Gp_den)
 
-#Create system for testing
-(Gc_num,Gc_den) = zpk2tf([-1, -2],[0],45.9)
+# Create system for testing
+(Gc_num,Gc_den) = zpk2tf([-1],[0],45.9) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
 Gc = ctrl.tf(Gc_num,Gc_den)
 M = ctrl.feedback(Gc*Gp,1)
 
