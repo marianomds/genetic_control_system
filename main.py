@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import control as ctrl    # Controls systems library
-import matplotlib.pyplot as plt # Plotting functions
+import control as ctrl
+import matplotlib.pyplot as plt
 import numpy as np
-from scipy import arange        # function to create range of numbers
+from scipy.signal import zpk2tf 
 
 # Create time vector to be used
-T = arange(0, 5, 0.1)
+T = np.arange(0, 5, 0.01)
 
 # Create Plant to be controlled
 Gp_den = np.convolve([1, 8], np.convolve([1, 1],[1, 2]))
@@ -14,8 +14,8 @@ Gp = ctrl.tf([1], Gp_den.tolist())
 
 
 #Create system for testing
-Gc_num = 45.9*np.convolve([1, 1],[1, 2])
-Gc = ctrl.tf(Gc_num.tolist(), [1, 0])
+(Gc_num,Gc_den) = zpk2tf([-1, -2],[0],45.9)
+Gc = ctrl.tf(Gc_num,Gc_den)
 M = ctrl.feedback(Gc*Gp,1)
 
 
