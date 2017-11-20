@@ -20,6 +20,11 @@ Gp = ctrl.tf(Gp_num,Gp_den)
 Gc = ctrl.tf(Gc_num,Gc_den)
 M = ctrl.feedback(Gc*Gp,1)
 
+def overshoot(signal):
+    return (signal.max() - signal[-1])*100
+
+def rise_time(signal):
+    return next(varvec[0] for varvec in enumerate(signal) if varvec[1] > signal[-1])
 
 if __name__ == "__main__":
 
@@ -40,10 +45,9 @@ if __name__ == "__main__":
     (y2, T2) = ctrl.step(Gp, T)
     (y3, T3) = ctrl.step(M, T)
 
-    print('Overshoot: %f %%' % ((y3.max() - y3[-1])*100))
+    print('Overshoot: %f %%' % overshoot(y3))
 
-    rt = next(x[0] for x in enumerate(y3) if x[1] > y3[-1])
-    print('Rise time: %1.2f sec' % (rt*step_time))
+    print('Rise time: %1.2f sec' % rise_time(y3))
 
     # Plot result
     plt.plot(T1, y1, T2, y2, T3, y3)
