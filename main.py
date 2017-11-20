@@ -12,9 +12,8 @@ step_time = 0.01
 T = np.arange(start_time, stop_time, step_time)
 
 # Create Plant to be controlled
-Gp_den = np.convolve([1, 8], np.convolve([1, 1],[1, 2]))
-Gp = ctrl.tf([1], Gp_den.tolist())
-
+(Gp_num,Gp_den) = zpk2tf([],[-1, -2, -8],1)
+Gp = ctrl.tf(Gp_num,Gp_den)
 
 #Create system for testing
 (Gc_num,Gc_den) = zpk2tf([-1, -2],[0],45.9)
@@ -45,7 +44,7 @@ if __name__ == "__main__":
 
     rt = next(x[0] for x in enumerate(y3) if x[1] > y3[-1])
     print('Rise time: %1.2f sec' % (rt*step_time))
-    
+
     # Plot result
     plt.plot(T1, y1, T2, y2, T3, y3)
     plt.show()
