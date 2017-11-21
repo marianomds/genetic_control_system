@@ -30,6 +30,7 @@ MSE_TH = 0.01
 def sigmoid (x):
     return 1/(1 + np.exp(-x))
 
+# Function for creating input signal to the system
 def create_input():
     if IN_TYPE == 'STEP':
         input_signal = np.zeros(int(FINAL_TIME/STEP_TIME))
@@ -53,10 +54,11 @@ def rise_time(signal):
     result = next((varvec[0] for varvec in enumerate(signal) if varvec[1] > signal[-1]), signal.size)
     return result * STEP_TIME
 
-def mse(signal1, signal2):
+def mse(signal1, signal2): # Mean squared error
     return np.mean((signal1 - signal2)**2)
 
 def evaluate(x, y):
+    # Return fitness evaluation depending on metric to optimize
     if OPTIMIZE == 'OV':
         return overshoot(y)
     elif OPTIMIZE == 'RT':
@@ -69,9 +71,13 @@ def evaluate(x, y):
 
 def evolution(Gp, Time, Input):
 
-    fitness_best = 999
+    # Variable for storing best fitness
+    fitness_best = 999 # Initial large enough value to ensure entering while loop
+
+    # Number of not closed loop stable tries discarded 
     margin_discarded = 0
 
+    # Select fitness threshold depending on metric to optimize
     if OPTIMIZE == 'OV':
         fitness_th = OVERSHOOT_TH
     elif OPTIMIZE == 'RT':
@@ -82,14 +88,18 @@ def evolution(Gp, Time, Input):
         print('Incorrect optimization metric.')
         quit()
     
+    # Array for storing history of best fitness individuals
     fitness_best_vec = np.array([])
 
+    # Number of loops
     loop_n = 0
 
+    # Keep entering while loop until fitness threshold is reached
     while (fitness_best > fitness_th):
 
         loop_n += 1
 
+        # Try random parameter values
         K = np.random.uniform(0, K_MAX)
         Z = np.random.uniform(ZERO_MIN, 0)
 
@@ -112,15 +122,18 @@ def evolution(Gp, Time, Input):
         # Evaluate fitness
         fitness = evaluate(Input,y)
 
+        # If better fitness value is found, save (best) parameters
         if fitness < fitness_best:
             fitness_best = fitness
             K_best = K
             Z_best = Z
 
+        # Save history of best fitness in a vector for plotting
         fitness_best_vec = np.append(fitness_best_vec, fitness_best)
 
+        # Real time plot of history of best fitness
         plt.plot(fitness_best_vec)
-        plt.pause(0.05)
+        plt.pause(0.001)
 
     # Create best PI controller
     (Gc_num_best,Gc_den_best) = zpk2tf([Z_best],[0],K_best) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
