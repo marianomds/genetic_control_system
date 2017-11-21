@@ -101,15 +101,16 @@ def evolution(Gp, Time, Input):
 
         # Try random parameter values
         K = np.random.uniform(0, K_MAX)
-        Z = np.random.uniform(ZERO_MIN, 0)
+        Z1 = np.random.uniform(ZERO_MIN, 0)
+        Z2 = np.random.uniform(ZERO_MIN, 0)
 
         # Create PI controller
-        (Gc_num,Gc_den) = zpk2tf([Z],[0],K) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
+        (Gc_num,Gc_den) = zpk2tf([Z1, Z2],[0],K) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
         Gc = ctrl.tf(Gc_num,Gc_den)
 
         # Evaluate closed loop stability
         gm, pm, Wcg, Wcp = ctrl.margin(Gc*Gp)
-        if gm <= 1: # Only consider closed loop stable (gm > 0dB)
+        if gm == None or gm <= 1: # Only consider closed loop stable (gm > 0dB)
             margin_discarded += 1
             continue
 
@@ -126,7 +127,8 @@ def evolution(Gp, Time, Input):
         if fitness < fitness_best:
             fitness_best = fitness
             K_best = K
-            Z_best = Z
+            Z1_best = Z1
+            Z2_best = Z2
 
         # Save history of best fitness in a vector for plotting
         fitness_best_vec = np.append(fitness_best_vec, fitness_best)
@@ -136,7 +138,7 @@ def evolution(Gp, Time, Input):
         plt.pause(0.001)
 
     # Create best PI controller
-    (Gc_num_best,Gc_den_best) = zpk2tf([Z_best],[0],K_best) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
+    (Gc_num_best,Gc_den_best) = zpk2tf([Z1_best, Z2_best],[0],K_best) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
     Gc_best = ctrl.tf(Gc_num_best,Gc_den_best)
 
     # Best closed loop system
@@ -148,7 +150,8 @@ def evolution(Gp, Time, Input):
     # Print controller information
     print('\nController:')
     print('k: %f' % K_best)
-    print('zero: %f' % Z_best)
+    print('zero 1: %f' % Z1_best)
+    print('zero 2: %f' % Z2_best)
     print(Gc_best)
 
     # Print closed loop transfer function
