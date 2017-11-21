@@ -19,9 +19,8 @@ K_MAX = 100
 ZERO_MIN = -20
 
 # Threshold values for algorithm convergence
-OVERSHOOT_MAX = 20 # in percentage
+OVERSHOOT_MAX = 3 # in percentage
 RISE_TIME_MAX = 11 # MUST BE: RISE_TIME_MAX > FINAL_TIME
-FINAL_ERROR_MAX = 0.05
 
 def create_input():
     input_signal = np.arange(START_TIME, FINAL_TIME, STEP_TIME)*(FINAL_VALUE/FINAL_TIME)
@@ -35,11 +34,14 @@ def rise_time(signal):
     result = next((varvec[0] for varvec in enumerate(signal) if varvec[1] > signal[-1]), signal.size)
     return result * STEP_TIME
 
-def evolution(Gp, Time):
+def mse(signal1, signal2):
+    return np.mean((signal1 - signal2)**2)
+
+def evolution(Gp, Time, Input):
 
     ov = 999
     rt = 999
-    while ((ov > OVERSHOOT_MAX) or (rt > RISE_TIME_MAX)): # agregar evaluar por error max
+    while ((ov > OVERSHOOT_MAX) or (rt > RISE_TIME_MAX)):
 
         K = np.random.uniform(0, K_MAX)
         Z = np.random.uniform(ZERO_MIN, 0)
@@ -57,7 +59,7 @@ def evolution(Gp, Time):
         M = ctrl.feedback(Gc*Gp,1)
 
         # Closed loop step response
-        y, t, xout = ctrl.lsim(M, input_signal, T)
+        y, t, xout = ctrl.lsim(M, Input, Time)
 
         # Evaluate overshoot and rise time
         ov = overshoot(y)
@@ -96,7 +98,7 @@ if __name__ == "__main__":
     y1, t1, xout = ctrl.lsim(Gp, input_signal, T)
 
     # Run evolution algorithm
-    Gc, M = evolution(Gp, T)
+    Gc, M = evolution(Gp, T, input_signal)
 
     # Closed loop response to input signal
     y2, t2, xout = ctrl.lsim(M, input_signal, T)
@@ -104,6 +106,7 @@ if __name__ == "__main__":
     # Evaluate and print overshoot and rise time
     print('Overshoot: %f %%' % overshoot(y2))
     print('Rise time: %1.2f sec' % rise_time(y2))
+    print('MSE: %f' % mse(y2, input_signal))
 
     # Plot result
     plt.plot(T, input_signal, t1, y1, t2, y2)
