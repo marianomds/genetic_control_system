@@ -12,7 +12,7 @@ STEP_TIME = 0.01
 
 # Input parameters
 FINAL_VALUE = 2
-FINAL_TIME = 10 # MUST BE: FINAL_TIME < STOP_TIME
+FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
 IN_TYPE = 'SIGMOID' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
@@ -70,6 +70,7 @@ def evaluate(x, y):
 def evolution(Gp, Time, Input):
 
     fitness_best = 999
+    margin_discarded = 0
 
     if OPTIMIZE == 'OV':
         fitness_th = OVERSHOOT_TH
@@ -81,7 +82,13 @@ def evolution(Gp, Time, Input):
         print('Incorrect optimization metric.')
         quit()
     
+    fitness_best_vec = np.array([])
+
+    loop_n = 0
+
     while (fitness_best > fitness_th):
+
+        loop_n += 1
 
         K = np.random.uniform(0, K_MAX)
         Z = np.random.uniform(ZERO_MIN, 0)
@@ -93,6 +100,7 @@ def evolution(Gp, Time, Input):
         # Evaluate closed loop stability
         gm, pm, Wcg, Wcp = ctrl.margin(Gc*Gp)
         if gm <= 1: # Only consider closed loop stable (gm > 0dB)
+            margin_discarded += 1
             continue
 
         # Closed loop system
@@ -109,12 +117,20 @@ def evolution(Gp, Time, Input):
             K_best = K
             Z_best = Z
 
+        fitness_best_vec = np.append(fitness_best_vec, fitness_best)
+
+        plt.plot(fitness_best_vec)
+        plt.pause(0.05)
+
     # Create best PI controller
     (Gc_num_best,Gc_den_best) = zpk2tf([Z_best],[0],K_best) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
     Gc_best = ctrl.tf(Gc_num_best,Gc_den_best)
 
     # Best closed loop system
     M_best = ctrl.feedback(Gc_best*Gp,1)
+
+    print('Total number of evaluations: %d' % loop_n)
+    print('Number of discarded (not closed loop stable): %d' % margin_discarded)
 
     # Print controller information
     print('\nController:')
@@ -160,8 +176,10 @@ if __name__ == "__main__":
     print('MSE: %f' % mse(y2, input_signal))
 
     # Plot result
+    plt.figure()
     plt.plot(T, input_signal, t1, y1, t2, y2)
     plt.draw()
 
     # Block until the plot window is closed
     plt.show()
+
