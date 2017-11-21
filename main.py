@@ -13,15 +13,19 @@ STEP_TIME = 0.01
 # Input parameters
 FINAL_VALUE = 2
 FINAL_TIME = 10 # MUST BE: FINAL_TIME < STOP_TIME
-IN_TYPE = 'SIGMOID' #Options: 'STEP', 'RAMP', 'SIGMOID'
+IN_TYPE = 'SIGMOID' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
 K_MAX = 100
 ZERO_MIN = -20
 
+# Metric to be optimized
+OPTIMIZE = 'MSE' # Options: 'OV', 'RT, 'MSE'
+
 # Threshold values for algorithm convergence
-OVERSHOOT_MAX = 3 # in percentage
-RISE_TIME_MAX = 11 # MUST BE: RISE_TIME_MAX > FINAL_TIME
+OVERSHOOT_TH = 3 # in percentage
+RISE_TIME_TH = 11
+MSE_TH = 0.01
 
 def sigmoid (x):
     return 1/(1 + np.exp(-x))
@@ -52,11 +56,32 @@ def rise_time(signal):
 def mse(signal1, signal2):
     return np.mean((signal1 - signal2)**2)
 
+def evaluate(x, y):
+    if OPTIMIZE == 'OV':
+        return overshoot(y)
+    elif OPTIMIZE == 'RT':
+        return rise_time(y)
+    elif OPTIMIZE == 'MSE':
+        return mse(x, y)
+    else:
+        print('Incorrect optimization metric.')
+        quit()
+
 def evolution(Gp, Time, Input):
 
-    ov = 999
-    rt = 999
-    while ((ov > OVERSHOOT_MAX) or (rt > RISE_TIME_MAX)):
+    fitness_best = 999
+
+    if OPTIMIZE == 'OV':
+        fitness_th = OVERSHOOT_TH
+    elif OPTIMIZE == 'RT':
+        fitness_th = RISE_TIME_TH
+    elif OPTIMIZE == 'MSE':
+        fitness_th = MSE_TH
+    else:
+        print('Incorrect optimization metric.')
+        quit()
+    
+    while (fitness_best > fitness_th):
 
         K = np.random.uniform(0, K_MAX)
         Z = np.random.uniform(ZERO_MIN, 0)
@@ -76,21 +101,32 @@ def evolution(Gp, Time, Input):
         # Closed loop step response
         y, t, xout = ctrl.lsim(M, Input, Time)
 
-        # Evaluate overshoot and rise time
-        ov = overshoot(y)
-        rt = rise_time(y)
+        # Evaluate fitness
+        fitness = evaluate(Input,y)
+
+        if fitness < fitness_best:
+            fitness_best = fitness
+            K_best = K
+            Z_best = Z
+
+    # Create best PI controller
+    (Gc_num_best,Gc_den_best) = zpk2tf([Z_best],[0],K_best) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
+    Gc_best = ctrl.tf(Gc_num_best,Gc_den_best)
+
+    # Best closed loop system
+    M_best = ctrl.feedback(Gc_best*Gp,1)
 
     # Print controller information
     print('\nController:')
-    print('k: %f' % K)
-    print('zero: %f' % Z)
-    print(Gc)
+    print('k: %f' % K_best)
+    print('zero: %f' % Z_best)
+    print(Gc_best)
 
     # Print closed loop transfer function
     print('Closed loop transfer:')
-    print(M)
+    print(M_best)
 
-    return Gc, M
+    return Gc_best, M_best
 
 
 if __name__ == "__main__":
