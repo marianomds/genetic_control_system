@@ -13,6 +13,7 @@ STEP_TIME = 0.01
 # Input parameters
 FINAL_VALUE = 2
 FINAL_TIME = 10 # MUST BE: FINAL_TIME < STOP_TIME
+IN_TYPE = 'SIGMOID' #Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
 K_MAX = 100
@@ -22,9 +23,23 @@ ZERO_MIN = -20
 OVERSHOOT_MAX = 3 # in percentage
 RISE_TIME_MAX = 11 # MUST BE: RISE_TIME_MAX > FINAL_TIME
 
+def sigmoid (x):
+    return 1/(1 + np.exp(-x))
+
 def create_input():
-    input_signal = np.arange(START_TIME, FINAL_TIME, STEP_TIME)*(FINAL_VALUE/FINAL_TIME)
+    if IN_TYPE == 'STEP':
+        input_signal = np.zeros(int(FINAL_TIME/STEP_TIME))
+    elif IN_TYPE == 'RAMP':
+        input_signal = np.arange(START_TIME, FINAL_TIME, STEP_TIME)*(FINAL_VALUE/FINAL_TIME)
+    elif IN_TYPE == 'SIGMOID':
+        x_tanh = np.arange(START_TIME, FINAL_TIME, STEP_TIME)
+        input_signal = sigmoid(x_tanh*(12/FINAL_TIME) - 6) * FINAL_VALUE
+    else:
+        print('Incorrect input type.')
+        quit()
+
     input_signal = np.append(input_signal, np.ones(int((STOP_TIME - FINAL_TIME)/STEP_TIME))*FINAL_VALUE)
+    
     return input_signal
 
 def overshoot(signal):
