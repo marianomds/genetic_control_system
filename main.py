@@ -10,6 +10,11 @@ START_TIME = 0
 STOP_TIME = 20
 STEP_TIME = 0.01
 
+# Plant parameters
+PLANT_ZEROS = []
+PLANT_POLES = [-1, -2, -8]
+PLANT_K = 1
+
 # Input parameters
 FINAL_VALUE = 2
 FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
@@ -174,7 +179,7 @@ def evolution(Gp, Time, Input):
 if __name__ == "__main__":
 
     # Create Plant to be controlled
-    (Gp_num,Gp_den) = zpk2tf([],[-1, -2, -8],1)
+    (Gp_num,Gp_den) = zpk2tf(PLANT_ZEROS,PLANT_POLES,PLANT_K)
     Gp = ctrl.tf(Gp_num,Gp_den)
 
     # Print transfer function of plant to be controlled
