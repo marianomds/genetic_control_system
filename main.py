@@ -11,7 +11,7 @@ STOP_TIME = 20
 STEP_TIME = 0.01
 
 # Plant parameters
-PLANT_ZEROS = []
+PLANT_ZEROS = [] # empty: no zeros
 PLANT_POLES = [-1, -2, -8]
 PLANT_K = 1
 
