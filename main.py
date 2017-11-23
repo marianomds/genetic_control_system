@@ -52,7 +52,7 @@ def create_input():
     return input_signal
 
 def overshoot(signal):
-    return (signal.max() - signal[-1])*100
+    return (signal.max() - signal[-1])*100 # in percent
 
 def rise_time(signal):
     result = next((varvec[0] for varvec in enumerate(signal) if varvec[1] > signal[-1]), signal.size)
