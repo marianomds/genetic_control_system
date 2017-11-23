@@ -149,6 +149,7 @@ def evolution(Gp, Time, Input):
         fitness_best_vec = np.append(fitness_best_vec, fitness_best)
 
         # Real time plot of history of best fitness
+        plt.subplot(1,2,1)
         plt.plot(fitness_best_vec)
         plt.pause(0.001)
 
@@ -207,9 +208,8 @@ if __name__ == "__main__":
     print('MSE: %f' % mse(y2, input_signal))
 
     # Plot result
-    plt.figure()
+    plt.subplot(1,2,2)
     plt.plot(T, input_signal, t1, y1, t2, y2)
-    plt.draw()
 
     # Block until the plot window is closed
     plt.show()
