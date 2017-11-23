@@ -16,7 +16,6 @@ FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
 IN_TYPE = 'SIGMOID' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
-K_MAX = 100
 ZERO_MIN = -20
 
 # Metric to be optimized
@@ -100,19 +99,27 @@ def evolution(Gp, Time, Input):
         loop_n += 1
 
         # Try random parameter values
-        K = np.random.uniform(0, K_MAX)
         Z1 = np.random.uniform(ZERO_MIN, 0)
         Z2 = np.random.uniform(ZERO_MIN, 0)
 
-        # Create PI controller
-        (Gc_num,Gc_den) = zpk2tf([Z1, Z2],[0],K) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
+        # Create test PI controller (used to calculate the maximum K for closed loop stable)
+        (Gc_num,Gc_den) = zpk2tf([Z1, Z2],[0],1) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
         Gc = ctrl.tf(Gc_num,Gc_den)
 
         # Evaluate closed loop stability
         gm, pm, Wcg, Wcp = ctrl.margin(Gc*Gp)
-        if gm == None or gm <= 1: # Only consider closed loop stable (gm > 0dB)
+
+        # Dischard solutions with no gain margin
+        if gm == None:
             margin_discarded += 1
             continue
+
+        # If K < gm => closed loop stable (gm > 0dB)
+        K = np.random.uniform(0, gm)
+
+        # Create PI controller for closed loop stable system
+        (Gc_num,Gc_den) = zpk2tf([Z1, Z2],[0],K) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
+        Gc = ctrl.tf(Gc_num,Gc_den)
 
         # Closed loop system
         M = ctrl.feedback(Gc*Gp,1)
