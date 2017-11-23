@@ -51,7 +51,10 @@ def overshoot(signal):
 
 def rise_time(signal):
     result = next((varvec[0] for varvec in enumerate(signal) if varvec[1] > signal[-1]), signal.size)
-    return result * STEP_TIME
+    if IN_TYPE == 'STEP':
+        return (result * STEP_TIME) - FINAL_TIME
+    else:
+        return result * STEP_TIME
 
 def mse(signal1, signal2): # Mean squared error
     return np.mean((signal1 - signal2)**2)
