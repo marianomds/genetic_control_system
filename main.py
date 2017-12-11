@@ -4,6 +4,7 @@ import control as ctrl
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import zpk2tf 
+from copy import deepcopy
 
 # Time vector parameters
 START_TIME = 0
@@ -82,6 +83,66 @@ def evaluate(x, y):
         print('Incorrect optimization metric.')
         quit()
 
+def cross_over(population):
+ 
+    # Initial values for the state machine
+    parent_ind = 1
+    state = 1
+
+    print('cross over')
+
+    # State Machine
+    while(state <= 3):
+
+        if state == 1: # Selection of the first parent
+            print('state 1')
+            if parent_ind >= POPULATION_SIZE: # As long as the index is smaller than the population size it will keep on selecting parents
+                state = 4
+            elif np.random.uniform(0, 1) > CROSS_OVER_P:
+                parent_ind += 1
+            else: # There is a probability CROSS_OVER_P for the indexed individual to be selected as a parent
+                P1 = parent_ind - 1
+                parent_ind += 1
+                state = 2
+      
+        elif state == 2: # Selection of the second parent
+            print('state 2')
+            if parent_ind > POPULATION_SIZE:
+                state = 4
+            elif np.random.uniform(0, 1) > CROSS_OVER_P:
+                parent_ind += 1
+            else:
+                P2 = parent_ind - 1
+                parent_ind += 1
+                state = 3
+
+        elif state == 3: # Crossing over
+            print('state 3')
+            Ch1 = deepcopy(population[P1])
+            Ch2 = deepcopy(population[P2])
+
+            code = np.round(np.random.random(3))
+            while(0 == code.sum() or 3 == code.sum()): # If all zeros or ones in code 
+                code = np.round(np.random.random(3))
+
+            if code[0] == 1:
+                Ch1.Z1 = population[P2].Z1
+                Ch2.Z1 = population[P1].Z1
+
+            if code[1] == 1:
+                Ch1.Z2 = population[P2].Z2
+                Ch2.Z2 = population[P1].Z2
+
+            if code[2] == 1:
+                Ch1.K = population[P2].K
+                Ch2.K = population[P1].K
+
+            # Append the 2 new children to the end of the population list
+            population.append(Ch1)
+            population.append(Ch2)
+
+            state = 1
+
 class individual():
 
     # Initialization funcion
@@ -158,6 +219,10 @@ def evolution(Gp, Time, Input):
     while (loop_n < MAX_GEN and best.fitness > fitness_th):
 
         loop_n += 1
+
+        print(len(population))
+        cross_over(population)
+        print(len(population))
 
 #        # If better fitness value is found, save (best) parameters
 #        if fitness < fitness_best:
