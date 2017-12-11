@@ -89,13 +89,10 @@ def cross_over(population):
     parent_ind = 1
     state = 1
 
-    print('cross over')
-
     # State Machine
     while(state <= 3):
 
         if state == 1: # Selection of the first parent
-            print('state 1')
             if parent_ind >= POPULATION_SIZE: # As long as the index is smaller than the population size it will keep on selecting parents
                 state = 4
             elif np.random.uniform(0, 1) > CROSS_OVER_P:
@@ -106,7 +103,6 @@ def cross_over(population):
                 state = 2
       
         elif state == 2: # Selection of the second parent
-            print('state 2')
             if parent_ind > POPULATION_SIZE:
                 state = 4
             elif np.random.uniform(0, 1) > CROSS_OVER_P:
@@ -117,7 +113,6 @@ def cross_over(population):
                 state = 3
 
         elif state == 3: # Crossing over
-            print('state 3')
             Ch1 = deepcopy(population[P1])
             Ch2 = deepcopy(population[P2])
 
@@ -142,6 +137,22 @@ def cross_over(population):
             population.append(Ch2)
 
             state = 1
+
+    return population
+
+def selection(population, Gp, Time, Input):
+
+    # Compute the fitness of all the children of the new population
+    for ind in range(POPULATION_SIZE, len(population)):
+        population[ind].fitness_calc(Gp, Time, Input)
+
+    # Order the population by best (lower) fitness
+    population = sorted(population, key=lambda individual: individual.fitness)
+
+    # Truncate the population so that only the POPULATION_SIZE best individuals remain
+    del population[POPULATION_SIZE:]
+
+    return population
 
 class individual():
 
@@ -180,6 +191,30 @@ class individual():
             self.fitness = evaluate(Input,y)
 
             break
+
+    def fitness_calc(self, Gp, Time, Input):
+
+            # Create PI controller
+            (self.Gc_num,self.Gc_den) = zpk2tf([self.Z1, self.Z2],[0],self.K) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
+            self.Gc = ctrl.tf(self.Gc_num,self.Gc_den)
+
+            # Evaluate closed loop stability
+            gm, pm, Wcg, Wcp = ctrl.margin(self.Gc*Gp)
+
+            # Dischard solutions with no gain margin
+            if gm == None or gm <= 1:
+                self.fitness = 999
+                return
+
+            # Closed loop system
+            self.M = ctrl.feedback(self.Gc*Gp,1)
+
+            # Closed loop step response
+            y, t, xout = ctrl.lsim(self.M, Input, Time)
+
+            # Evaluate fitness
+            self.fitness = evaluate(Input,y)
+
 
 def evolution(Gp, Time, Input):
 
@@ -220,9 +255,17 @@ def evolution(Gp, Time, Input):
 
         loop_n += 1
 
-        print(len(population))
-        cross_over(population)
-        print(len(population))
+        print('old')
+        for ind in range(len(population)):
+            print(population[ind].fitness)
+
+        population = cross_over(population)
+        # mutation(population)
+        population = selection(population, Gp, Time, Input)
+
+        print('new')
+        for ind in range(len(population)):
+            print(population[ind].fitness)
 
 #        # If better fitness value is found, save (best) parameters
 #        if fitness < fitness_best:
