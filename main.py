@@ -19,7 +19,7 @@ PLANT_K = 1
 # Input parameters
 FINAL_VALUE = 2
 FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
-IN_TYPE = 'SIGMOID' # Options: 'STEP', 'RAMP', 'SIGMOID'
+IN_TYPE = 'STEP' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
 ZERO_MIN = -20
@@ -34,9 +34,9 @@ MSE_TH = 0.01
 
 # Genetic algorithm parameters
 POPULATION_SIZE = 10
-MAX_GEN = 10 # maximum number of generations
+MAX_GEN = 100 # maximum number of generations
 CROSS_OVER_P = 0.5 # probability of crossing over
-
+MUTATION_COEFF = 0.01 # minimum mutation value
 
 def sigmoid (x):
     return 1/(1 + np.exp(-x))
@@ -140,6 +140,21 @@ def cross_over(population):
 
     return population
 
+def mutation(population,fitness_th):
+
+    # Duplicate first (best) individual. This new one will not be mutated.
+    population.insert(0,population[0])
+
+    # Adaptive mutation: as long as the best individual's fitness gets closer the the threshold, the mutation value decreases
+    mutation_val = MUTATION_COEFF*(population[0].fitness/fitness_th)
+
+    for ind in range(1,len(population)):
+        population[ind].Z1 *= (1 + np.random.uniform(-mutation_val,mutation_val) )
+        population[ind].Z2 *= (1 + np.random.uniform(-mutation_val,mutation_val) )
+        population[ind].K *= (1 + np.random.uniform(-mutation_val,mutation_val) )
+
+    return population
+
 def selection(population, Gp, Time, Input):
 
     # Compute the fitness of all the children of the new population
@@ -198,6 +213,11 @@ class individual():
             (self.Gc_num,self.Gc_den) = zpk2tf([self.Z1, self.Z2],[0],self.K) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
             self.Gc = ctrl.tf(self.Gc_num,self.Gc_den)
 
+            # If parameter values are too high, return (to avoid crashing at calling ctrl.margin)
+            if (abs(self.Z1) + abs(self.Z2) + abs(self.K)) > 10000:
+                self.fitness = 999
+                return
+
             # Evaluate closed loop stability
             gm, pm, Wcg, Wcp = ctrl.margin(self.Gc*Gp)
 
@@ -246,19 +266,13 @@ def evolution(Gp, Time, Input):
     # Keep entering while loop until fitness threshold is reached
     while (loop_n < MAX_GEN and population[0].fitness > fitness_th): # population[0] is the best individual (since population is sorted in the selection function)
 
+        # Generation count
         loop_n += 1
 
-        print('old')
-        for ind in range(len(population)):
-            print(population[ind].fitness)
-
+        # Generate new generation
         population = cross_over(population)
-        # mutation(population)
+        population = mutation(population,fitness_th)
         population = selection(population, Gp, Time, Input)
-
-        print('new')
-        for ind in range(len(population)):
-            print(population[ind].fitness)
 
         # Save history of best fitness in a vector for plotting
         fitness_best_vec = np.append(fitness_best_vec, population[0].fitness)
