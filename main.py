@@ -218,10 +218,6 @@ class individual():
 
 def evolution(Gp, Time, Input):
 
-    # Variable for storing best fitness
-#    fitness_best = 999 # Initial large enough value to ensure entering while loop
-
-
     # Select fitness threshold depending on metric to optimize
     if OPTIMIZE == 'OV':
         fitness_th = OVERSHOOT_TH
@@ -244,14 +240,11 @@ def evolution(Gp, Time, Input):
         x = individual(Gp, Time, Input)
         population.append(x)
 
-    # Create random best individual
-    best = individual(Gp, Time, Input)
-
     # Number of loops
     loop_n = 0
 
     # Keep entering while loop until fitness threshold is reached
-    while (loop_n < MAX_GEN and best.fitness > fitness_th):
+    while (loop_n < MAX_GEN and population[0].fitness > fitness_th): # population[0] is the best individual (since population is sorted in the selection function)
 
         loop_n += 1
 
@@ -267,15 +260,8 @@ def evolution(Gp, Time, Input):
         for ind in range(len(population)):
             print(population[ind].fitness)
 
-#        # If better fitness value is found, save (best) parameters
-#        if fitness < fitness_best:
-#            fitness_best = fitness
-#            K_best = K
-#            Z1_best = Z1
-#            Z2_best = Z2
-
         # Save history of best fitness in a vector for plotting
-        fitness_best_vec = np.append(fitness_best_vec, best.fitness)
+        fitness_best_vec = np.append(fitness_best_vec, population[0].fitness)
 
         # Real time plot of history of best fitness
         plt.subplot(1,2,1)
@@ -283,7 +269,7 @@ def evolution(Gp, Time, Input):
         plt.pause(0.001)
 
     # Create best PI controller
-    (Gc_num_best,Gc_den_best) = zpk2tf([best.Z1, best.Z2],[0],best.K) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
+    (Gc_num_best,Gc_den_best) = zpk2tf([population[0].Z1, population[0].Z2],[0],population[0].K) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
     Gc_best = ctrl.tf(Gc_num_best,Gc_den_best)
 
     # Best closed loop system
@@ -293,9 +279,9 @@ def evolution(Gp, Time, Input):
 
     # Print controller information
     print('\nController:')
-    print('k: %f' % best.K)
-    print('zero 1: %f' % best.Z1)
-    print('zero 2: %f' % best.Z2)
+    print('k: %f' % population[0].K)
+    print('zero 1: %f' % population[0].Z1)
+    print('zero 2: %f' % population[0].Z2)
     print(Gc_best)
 
     # Print closed loop transfer function
