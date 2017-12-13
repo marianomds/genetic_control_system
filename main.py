@@ -74,8 +74,7 @@ def rise_time(signal):
         return result * STEP_TIME
 
 def mse(signal1, signal2): # Mean squared error
-#    return np.mean((signal1 - signal2)**2)
-    return np.mean(abs(signal1 - signal2))
+    return np.mean((signal1 - signal2)**2)
 
 def evaluate(x, y):
     # Return fitness evaluation depending on metric to optimize
@@ -154,9 +153,7 @@ def mutation(population,fitness_th):
 
     for ind in range(1,len(population)):
 
-
         # Adaptive mutation: as long as the individual's fitness gets closer the the threshold, the mutation value decreases
-#        mutation_val = log10( population[ind].fitness/fitness_th )/20 + MUTATION_COEFF
         mutation_val = -log10( fitness_th/population[ind].fitness )/10 + MUTATION_COEFF
 
         population[ind].Z1 *= (1 + np.random.uniform(-mutation_val,mutation_val) )
@@ -274,7 +271,6 @@ def evolution(Gp, Time, Input):
 
     # Array for storing history of best fitness individuals
     fitness_best_vec = np.array([999])
-
     fitness_ave_vec = np.array([999])
 
     # Create random population
@@ -305,11 +301,9 @@ def evolution(Gp, Time, Input):
 
         # Save history of best fitness in a vector for plotting
         if population[0].fitness > fitness_best_vec[-1]: # New best individual should not be worse than previous
-            print('Overflow problem???')
-            print(population[0].Z1)
-            print(population[0].Z2)
-            print(population[0].K)
+            print('Evolution problem!')
             quit()
+
         fitness_best_vec = np.append(fitness_best_vec, population[0].fitness)
 
         # Real time plot of history of best fitness
