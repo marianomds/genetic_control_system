@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import zpk2tf 
 from copy import deepcopy
+from math import log10
 
 # Time vector parameters
 START_TIME = 0
@@ -13,16 +14,18 @@ STEP_TIME = 0.01
 
 # Plant parameters
 PLANT_ZEROS = [] # empty: no zeros
-PLANT_POLES = [-1, -2, -8]
+PLANT_POLES = [-1, -5 + 3j, -5 - 3j, -10]
 PLANT_K = 1
 
 # Input parameters
-FINAL_VALUE = 2
+FINAL_VALUE = 1
 FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
 IN_TYPE = 'STEP' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
-ZERO_MIN = -20
+ZERO_MIN = -30
+ZERO_MAX = 0
+K_MAX = 1000
 
 # Metric to be optimized
 OPTIMIZE = 'MSE' # Options: 'OV', 'RT, 'MSE'
@@ -30,13 +33,13 @@ OPTIMIZE = 'MSE' # Options: 'OV', 'RT, 'MSE'
 # Threshold values for algorithm convergence
 OVERSHOOT_TH = 3 # in percentage
 RISE_TIME_TH = 11
-MSE_TH = 0.01
+MSE_TH = 0.00001
 
 # Genetic algorithm parameters
-POPULATION_SIZE = 10
-MAX_GEN = 100 # maximum number of generations
+POPULATION_SIZE = 20
+MAX_GEN = 30 # maximum number of generations
 CROSS_OVER_P = 0.5 # probability of crossing over
-MUTATION_COEFF = 0.01 # minimum mutation value
+MUTATION_COEFF = .01 # mutation value
 
 def sigmoid (x):
     return 1/(1 + np.exp(-x))
@@ -59,7 +62,9 @@ def create_input():
     return input_signal
 
 def overshoot(signal):
-    return (signal.max() - signal[-1])*100 # in percent
+    if signal.max() <= FINAL_VALUE:
+        return 100
+    return (signal.max() - FINAL_VALUE)*100 # in percent
 
 def rise_time(signal):
     result = next((varvec[0] for varvec in enumerate(signal) if varvec[1] > signal[-1]), signal.size)
@@ -69,7 +74,8 @@ def rise_time(signal):
         return result * STEP_TIME
 
 def mse(signal1, signal2): # Mean squared error
-    return np.mean((signal1 - signal2)**2)
+#    return np.mean((signal1 - signal2)**2)
+    return np.mean(abs(signal1 - signal2))
 
 def evaluate(x, y):
     # Return fitness evaluation depending on metric to optimize
@@ -143,22 +149,38 @@ def cross_over(population):
 def mutation(population,fitness_th):
 
     # Duplicate first (best) individual. This new one will not be mutated.
-    population.insert(0,population[0])
-
-    # Adaptive mutation: as long as the best individual's fitness gets closer the the threshold, the mutation value decreases
-    mutation_val = MUTATION_COEFF*(population[0].fitness/fitness_th)
+    X = deepcopy(population[0])
+    population.insert(0,X)
 
     for ind in range(1,len(population)):
+
+
+        # Adaptive mutation: as long as the individual's fitness gets closer the the threshold, the mutation value decreases
+#        mutation_val = log10( population[ind].fitness/fitness_th )/20 + MUTATION_COEFF
+        mutation_val = -log10( fitness_th/population[ind].fitness )/10 + MUTATION_COEFF
+
         population[ind].Z1 *= (1 + np.random.uniform(-mutation_val,mutation_val) )
+        if population[ind].Z1 < ZERO_MIN:
+            population[ind].Z1 = ZERO_MIN
+        elif population[ind].Z1 > ZERO_MAX:
+            population[ind].Z1 = ZERO_MAX
         population[ind].Z2 *= (1 + np.random.uniform(-mutation_val,mutation_val) )
+        if population[ind].Z2 < ZERO_MIN:
+            population[ind].Z2 = ZERO_MIN
+        elif population[ind].Z2 > ZERO_MAX:
+            population[ind].Z2 = ZERO_MAX
         population[ind].K *= (1 + np.random.uniform(-mutation_val,mutation_val) )
+        if population[ind].K > K_MAX:
+            population[ind].K = K_MAX
+        if population[ind].K < 0:
+            population[ind].K = 0
 
     return population
 
 def selection(population, Gp, Time, Input):
 
-    # Compute the fitness of all the children of the new population
-    for ind in range(POPULATION_SIZE, len(population)):
+    # Compute the fitness of all the population
+    for ind in range(len(population)):
         population[ind].fitness_calc(Gp, Time, Input)
 
     # Order the population by best (lower) fitness
@@ -183,14 +205,17 @@ class individual():
             self.Gc = ctrl.tf(self.Gc_num,self.Gc_den)
 
             # Evaluate closed loop stability
-            gm, pm, Wcg, Wcp = ctrl.margin(self.Gc*Gp)
+            self.gm, self.pm, self.Wcg, self.Wcp = ctrl.margin(self.Gc*Gp)
 
             # Dischard solutions with no gain margin
-            if gm == None:
+            if self.Wcg == None or (self.Wcp != None and self.Wcg >= self.Wcp):
                 continue
 
+            if self.gm == None: # None = inf
+                self.gm = K_MAX
+
             # If K < gm => closed loop stable (gm > 0dB)
-            self.K = np.random.uniform(0, gm)
+            self.K = np.random.uniform(0, self.gm)
 
             # Create PI controller for closed loop stable system
             (self.Gc_num,self.Gc_den) = zpk2tf([self.Z1, self.Z2],[0],self.K) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
@@ -200,10 +225,10 @@ class individual():
             self.M = ctrl.feedback(self.Gc*Gp,1)
 
             # Closed loop step response
-            y, t, xout = ctrl.lsim(self.M, Input, Time)
+            self.y, self.t, self.xout = ctrl.lsim(self.M, Input, Time)
 
             # Evaluate fitness
-            self.fitness = evaluate(Input,y)
+            self.fitness = evaluate(Input,self.y)
 
             break
 
@@ -213,16 +238,11 @@ class individual():
             (self.Gc_num,self.Gc_den) = zpk2tf([self.Z1, self.Z2],[0],self.K) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
             self.Gc = ctrl.tf(self.Gc_num,self.Gc_den)
 
-            # If parameter values are too high, return (to avoid crashing at calling ctrl.margin)
-            if (abs(self.Z1) + abs(self.Z2) + abs(self.K)) > 10000:
-                self.fitness = 999
-                return
-
             # Evaluate closed loop stability
-            gm, pm, Wcg, Wcp = ctrl.margin(self.Gc*Gp)
+            self.gm, self.pm, self.Wcg, self.Wcp = ctrl.margin(self.Gc*Gp)
 
             # Dischard solutions with no gain margin
-            if gm == None or gm <= 1:
+            if self.gm == None or self.gm <= 1:
                 self.fitness = 999
                 return
 
@@ -230,10 +250,10 @@ class individual():
             self.M = ctrl.feedback(self.Gc*Gp,1)
 
             # Closed loop step response
-            y, t, xout = ctrl.lsim(self.M, Input, Time)
+            self.y, self.t, self.xout = ctrl.lsim(self.M, Input, Time)
 
             # Evaluate fitness
-            self.fitness = evaluate(Input,y)
+            self.fitness = evaluate(Input,self.y)
 
 
 def evolution(Gp, Time, Input):
@@ -253,7 +273,9 @@ def evolution(Gp, Time, Input):
     population = []
 
     # Array for storing history of best fitness individuals
-    fitness_best_vec = np.array([])
+    fitness_best_vec = np.array([999])
+
+    fitness_ave_vec = np.array([999])
 
     # Create random population
     for count in range(POPULATION_SIZE):
@@ -274,12 +296,26 @@ def evolution(Gp, Time, Input):
         population = mutation(population,fitness_th)
         population = selection(population, Gp, Time, Input)
 
+        fitness_ave = 0
+        for ind in range(0,POPULATION_SIZE):
+            fitness_ave += population[ind].fitness
+        fitness_ave /= POPULATION_SIZE
+
+        fitness_ave_vec = np.append(fitness_ave_vec, fitness_ave)
+
         # Save history of best fitness in a vector for plotting
+        if population[0].fitness > fitness_best_vec[-1]: # New best individual should not be worse than previous
+            print('Overflow problem???')
+            print(population[0].Z1)
+            print(population[0].Z2)
+            print(population[0].K)
+            quit()
         fitness_best_vec = np.append(fitness_best_vec, population[0].fitness)
 
         # Real time plot of history of best fitness
         plt.subplot(1,2,1)
-        plt.plot(fitness_best_vec)
+        plt.plot(fitness_best_vec[1:])
+        plt.plot(fitness_ave_vec[1:])
         plt.pause(0.001)
 
     # Create best PI controller
@@ -289,10 +325,10 @@ def evolution(Gp, Time, Input):
     # Best closed loop system
     M_best = ctrl.feedback(Gc_best*Gp,1)
 
-    print('Total number of generations: %d' % loop_n)
+    print('\nTotal number of generations: %d' % loop_n)
 
     # Print controller information
-    print('\nController:')
+    print('\nController:\n')
     print('k: %f' % population[0].K)
     print('zero 1: %f' % population[0].Z1)
     print('zero 2: %f' % population[0].Z2)
