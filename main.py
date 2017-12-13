@@ -40,9 +40,10 @@ MSE_TH = 0.00001
 
 # Genetic algorithm parameters
 POPULATION_SIZE = 20
-MAX_GEN = 30 # maximum number of generations
+POPULATION_DECREASE = 1 # number of individuals to kill in each generation
+MAX_GEN = 20 # maximum number of generations
 CROSS_OVER_P = 0.5 # probability of crossing over
-MUTATION_COEFF = .01 # mutation value
+MUTATION_COEFF = .1 # mutation value
 
 def sigmoid (x):
     return 1/(1 + np.exp(-x))
@@ -258,6 +259,8 @@ class individual():
 
 def evolution(Gp, Time, Input):
 
+    global POPULATION_SIZE
+
     # Select fitness threshold depending on metric to optimize
     if OPTIMIZE == 'OV':
         fitness_th = OVERSHOOT_TH
@@ -315,6 +318,9 @@ def evolution(Gp, Time, Input):
         plt.plot(fitness_ave_vec[1:])
         plt.pause(0.001)
 
+        # Recalculate population size
+        POPULATION_SIZE -= POPULATION_DECREASE
+
     # Create best PI controller
     (Gc_num_best,Gc_den_best) = zpk2tf([population[0].Z1, population[0].Z2],[0],population[0].K) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
     Gc_best = ctrl.tf(Gc_num_best,Gc_den_best)
@@ -339,6 +345,10 @@ def evolution(Gp, Time, Input):
 
 
 if __name__ == "__main__":
+
+    if MAX_GEN > POPULATION_SIZE/POPULATION_DECREASE:
+        print('MAX_GEN should be less or equal than POPULATION_SIZE/POPULATION_DECREASE')
+        quit()
 
     # Create Plant to be controlled
     (Gp_num,Gp_den) = zpk2tf(PLANT_ZEROS,PLANT_POLES,PLANT_K)
