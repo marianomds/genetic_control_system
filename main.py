@@ -155,10 +155,14 @@ def mutation(population,fitness_th):
     X = deepcopy(population[0])
     population.insert(0,X)
 
+    mutation_val_vec = [0]
+
     for ind in range(1,len(population)):
 
         # Adaptive mutation: as long as the individual's fitness gets closer the the threshold, the mutation value decreases
-        mutation_val = -log10( fitness_th/population[ind].fitness )/10 + MUTATION_COEFF
+        mutation_val_vec.append(-log10( fitness_th/population[ind].fitness )/10 + MUTATION_COEFF)
+
+        mutation_val = mutation_val_vec[ind]
 
         population[ind].Z1 *= (1 + np.random.uniform(-mutation_val,mutation_val) )
         if population[ind].Z1 < ZERO_MIN:
@@ -176,7 +180,9 @@ def mutation(population,fitness_th):
         if population[ind].K < 0:
             population[ind].K = 0
 
-    return population
+    mutation_average = sum(mutation_val_vec) / len(mutation_val_vec)
+
+    return population, mutation_average
 
 def selection(population, Gp, Time, Input):
 
@@ -278,6 +284,7 @@ def evolution(Gp, Time, Input):
     # Array for storing history of best fitness individuals
     fitness_best_vec = np.array([999])
     fitness_ave_vec = np.array([999])
+    mutation_ave_vec = np.array([0])
 
     # Create random population
     for count in range(POPULATION_SIZE):
@@ -295,7 +302,7 @@ def evolution(Gp, Time, Input):
 
         # Generate new generation
         population = cross_over(population)
-        population = mutation(population,fitness_th)
+        population, mutation_average = mutation(population,fitness_th)
         population = selection(population, Gp, Time, Input)
 
         fitness_ave = 0
@@ -312,10 +319,13 @@ def evolution(Gp, Time, Input):
 
         fitness_best_vec = np.append(fitness_best_vec, population[0].fitness)
 
+        mutation_ave_vec = np.append(mutation_ave_vec, mutation_average)
+
         # Real time plot of history of best fitness
         plt.subplot(1,2,1)
         plt.plot(fitness_best_vec[1:])
         plt.plot(fitness_ave_vec[1:])
+        plt.plot(mutation_ave_vec[1:])
         plt.pause(0.001)
 
         # Recalculate population size
