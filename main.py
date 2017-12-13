@@ -6,6 +6,9 @@ import numpy as np
 from scipy.signal import zpk2tf 
 from copy import deepcopy
 from math import log10
+import warnings
+import matplotlib.cbook
+warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 
 # Time vector parameters
 START_TIME = 0
