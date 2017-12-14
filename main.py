@@ -17,7 +17,7 @@ STEP_TIME = 0.1
 
 # Plant parameters
 PLANT_ZEROS = [] # empty: no zeros
-PLANT_POLES = [-1, -5 + 3j, -5 - 3j, -10]
+PLANT_POLES = [-1, -1.5 + 8j, -1.5 - 8j,  -5 + 3j, -5 - 3j, -10]
 PLANT_K = 1
 
 # Input parameters
@@ -26,9 +26,9 @@ FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
 IN_TYPE = 'STEP' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
-ZERO_MIN = -1000
-ZERO_MAX = 0
-K_MAX = 1000
+DAMPING_MAX = 10 # Maximum damping ratio
+WN_MAX = 20 # Maximum natural frequency
+K_MAX = 100000
 
 # Metric to be optimized
 OPTIMIZE = 'MSE' # Options: 'OV', 'RT, 'MSE'
@@ -39,12 +39,12 @@ RISE_TIME_TH = 11
 MSE_TH = 0.0001
 
 # Genetic algorithm parameters
-POPULATION_SIZE_MAX = 10
+POPULATION_SIZE_MAX = 40
 POPULATION_SIZE = POPULATION_SIZE_MAX # initial population = max population
-POPULATION_DECREASE = 0.5 # number of individuals to kill in each generation
+POPULATION_DECREASE = 2 # number of individuals to kill in each generation
 MAX_GEN = 19 # maximum number of generations
 CROSS_OVER_P = 0.5 # probability of crossing over
-MUTATION_COEFF = .01 # mutation value
+MUTATION_COEFF = .05 # mutation value
 
 def sigmoid (x):
     return 1/(1 + np.exp(-x))
@@ -131,12 +131,12 @@ def cross_over(population):
                 code = np.round(np.random.random(3))
 
             if code[0] == 1:
-                Ch1.Z1 = population[P2].Z1
-                Ch2.Z1 = population[P1].Z1
+                Ch1.DP = population[P2].DP
+                Ch2.DP = population[P1].DP
 
             if code[1] == 1:
-                Ch1.Z2 = population[P2].Z2
-                Ch2.Z2 = population[P1].Z2
+                Ch1.WN = population[P2].WN
+                Ch2.WN = population[P1].WN
 
             if code[2] == 1:
                 Ch1.K = population[P2].K
@@ -161,20 +161,20 @@ def mutation(population,fitness_th):
     for ind in range(1,len(population)):
 
         # Adaptive mutation: as long as the individual's fitness gets closer the the threshold, the mutation value decreases
-        mutation_val_vec.append(-log10( fitness_th/population[ind].fitness )/10 + MUTATION_COEFF)
+        mutation_val_vec.append(-log10( fitness_th/population[ind].fitness )/100 + MUTATION_COEFF)
 
         mutation_val = mutation_val_vec[ind]
 
-        population[ind].Z1 *= (1 + np.random.uniform(-mutation_val,mutation_val) )
-        if population[ind].Z1 < ZERO_MIN:
-            population[ind].Z1 = ZERO_MIN
-        elif population[ind].Z1 > ZERO_MAX:
-            population[ind].Z1 = ZERO_MAX
-        population[ind].Z2 *= (1 + np.random.uniform(-mutation_val,mutation_val) )
-        if population[ind].Z2 < ZERO_MIN:
-            population[ind].Z2 = ZERO_MIN
-        elif population[ind].Z2 > ZERO_MAX:
-            population[ind].Z2 = ZERO_MAX
+        population[ind].DP *= (1 + np.random.uniform(-mutation_val,mutation_val) )
+        if population[ind].DP > DAMPING_MAX:
+            population[ind].DP = DAMPING_MAX
+        elif population[ind].DP < 0:
+            population[ind].DP = 0
+        population[ind].WN *= (1 + np.random.uniform(-mutation_val,mutation_val) )
+        if population[ind].WN > WN_MAX:
+            population[ind].WN = WN_MAX
+        elif population[ind].WN < 0:
+            population[ind].WN = 0
         population[ind].K *= (1 + np.random.uniform(-mutation_val,mutation_val) )
         if population[ind].K > K_MAX:
             population[ind].K = K_MAX
@@ -205,8 +205,10 @@ class individual():
     def __init__(self, Gp, Time, Input):
         while(True):
             # Try random parameter values
-            self.Z1 = np.random.uniform(ZERO_MIN, 0)
-            self.Z2 = np.random.uniform(ZERO_MIN, 0)
+            self.DP = np.random.uniform(0, DAMPING_MAX)
+            self.WN = np.random.uniform(0, WN_MAX)
+
+            (self.Z1,self.Z2) = np.roots([1, 2*self.DP*self.WN, self.WN**2])
 
             # Create test PI controller (used to calculate the maximum K for closed loop stable)
             (self.Gc_num,self.Gc_den) = zpk2tf([self.Z1, self.Z2],[0],1) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
@@ -241,6 +243,8 @@ class individual():
             break
 
     def fitness_calc(self, Gp, Time, Input):
+
+            (self.Z1,self.Z2) = np.roots([1, 2*self.DP*self.WN, self.WN**2])
 
             # Create PI controller
             (self.Gc_num,self.Gc_den) = zpk2tf([self.Z1, self.Z2],[0],self.K) # PID controller, 3 parameters: location of 2 zeros, value of K, (+ 1 pole always in origin)
@@ -345,6 +349,8 @@ def evolution(Gp, Time, Input):
         plt.pause(0.01)
 
 
+    (population[0].Z1,population[0].Z2) = np.roots([1, 2*population[0].DP*population[0].WN, population[0].WN**2])
+
     # Create best PI controller
     (Gc_num_best,Gc_den_best) = zpk2tf([population[0].Z1, population[0].Z2],[0],population[0].K) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
     Gc_best = ctrl.tf(Gc_num_best,Gc_den_best)
@@ -356,9 +362,9 @@ def evolution(Gp, Time, Input):
 
     # Print controller information
     print('\nController:\n')
-    print('k: %f' % population[0].K)
-    print('zero 1: %f' % population[0].Z1)
-    print('zero 2: %f' % population[0].Z2)
+    print('K: %f' % population[0].K)
+    print('Damping Ratio: %f' % population[0].DP)
+    print('Natural Frequency: %f' % population[0].WN)
     print(Gc_best)
 
     # Print closed loop transfer function
