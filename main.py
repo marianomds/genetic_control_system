@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import control as ctrl
+from pzmap2 import pzmap
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import zpk2tf 
@@ -362,7 +363,11 @@ def evolution(Gp, Time, Input):
         # Real time plot of history of best fitness
         
         plt.clf() # clear plot
-        fit = fig.add_subplot(121)
+
+        plt.subplot(2,2,3)
+        pzmap(Gp, Plot=True, title='Plant')
+
+        fit = fig.add_subplot(2,2,1)
         plt.title('Evolution')
         mut = fit.twinx()
         fit.set_xlabel("Generations")
@@ -441,10 +446,13 @@ if __name__ == "__main__":
     print('MSE: %f' % mse(y2, input_signal))
 
     # Plot result
-    plt.subplot(1,2,2)
+    plt.subplot(2,2,2)
     plt.title('Temporal response')
     plt.xlabel("Time")
     plt.plot(T, input_signal, t1, y1, t2, y2)
+    plt.subplot(2,2,4)
+    pzmap(Gc, Plot=True, title='Controller')
+
 
     # Block until the plot window is closed
     plt.show()
