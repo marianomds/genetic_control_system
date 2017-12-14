@@ -180,7 +180,7 @@ def mutation(population,fitness_th):
         if population[ind].K < 0:
             population[ind].K = 0
 
-    mutation_average = sum(mutation_val_vec) / len(mutation_val_vec)
+    mutation_average = (sum(mutation_val_vec) / len(mutation_val_vec))*100
 
     return population, mutation_average
 
@@ -294,6 +294,8 @@ def evolution(Gp, Time, Input):
     # Number of loops
     loop_n = 0
 
+    fig = plt.figure()
+
     # Keep entering while loop until fitness threshold is reached
     while (loop_n < MAX_GEN and population[0].fitness > fitness_th): # population[0] is the best individual (since population is sorted in the selection function)
 
@@ -322,11 +324,21 @@ def evolution(Gp, Time, Input):
         mutation_ave_vec = np.append(mutation_ave_vec, mutation_average)
 
         # Real time plot of history of best fitness
-        plt.subplot(1,2,1)
-        plt.plot(fitness_best_vec[1:])
-        plt.plot(fitness_ave_vec[1:])
-        plt.plot(mutation_ave_vec[1:])
-        plt.pause(0.001)
+        
+        plt.clf() # clear plot
+        fit = fig.add_subplot(121)
+        plt.title('Evolution')
+        mut = fit.twinx()
+        fit.set_xlabel("Generations")
+        fit.set_ylabel("Fitness")
+        mut.set_ylabel("Mutation [%]")
+        p1, = fit.plot(fitness_best_vec[1:], color = 'k', label = 'Best fitness')
+        p2, = fit.plot(fitness_ave_vec[1:], color = 'b', label = 'Average fitness')
+        p3, = fit.plot((0, loop_n), (fitness_th, fitness_th), color = 'g', label = 'Fitness threshold')
+        p4, = mut.plot(mutation_ave_vec[1:], color = 'r', label = 'Average mutation %')
+        lns = [p1, p2, p3, p4]
+        fit.legend(handles=lns, loc='upper right')
+        plt.pause(0.01)
 
         # Recalculate population size
         POPULATION_SIZE -= POPULATION_DECREASE
@@ -390,6 +402,8 @@ if __name__ == "__main__":
 
     # Plot result
     plt.subplot(1,2,2)
+    plt.title('Temporal response')
+    plt.xlabel("Time")
     plt.plot(T, input_signal, t1, y1, t2, y2)
 
     # Block until the plot window is closed
