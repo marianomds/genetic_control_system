@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 # Time vector parameters
 START_TIME = 0
 STOP_TIME = 20
-STEP_TIME = 0.01
+STEP_TIME = 0.1
 
 # Plant parameters
 PLANT_ZEROS = [] # empty: no zeros
@@ -26,7 +26,7 @@ FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
 IN_TYPE = 'STEP' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
-ZERO_MIN = -30
+ZERO_MIN = -1000
 ZERO_MAX = 0
 K_MAX = 1000
 
@@ -36,14 +36,15 @@ OPTIMIZE = 'MSE' # Options: 'OV', 'RT, 'MSE'
 # Threshold values for algorithm convergence
 OVERSHOOT_TH = 3 # in percentage
 RISE_TIME_TH = 11
-MSE_TH = 0.00001
+MSE_TH = 0.0001
 
 # Genetic algorithm parameters
-POPULATION_SIZE = 20
-POPULATION_DECREASE = 1 # number of individuals to kill in each generation
-MAX_GEN = 20 # maximum number of generations
+POPULATION_SIZE_MAX = 10
+POPULATION_SIZE = POPULATION_SIZE_MAX # initial population = max population
+POPULATION_DECREASE = 0.5 # number of individuals to kill in each generation
+MAX_GEN = 19 # maximum number of generations
 CROSS_OVER_P = 0.5 # probability of crossing over
-MUTATION_COEFF = .1 # mutation value
+MUTATION_COEFF = .01 # mutation value
 
 def sigmoid (x):
     return 1/(1 + np.exp(-x))
@@ -299,6 +300,9 @@ def evolution(Gp, Time, Input):
     # Keep entering while loop until fitness threshold is reached
     while (loop_n < MAX_GEN and population[0].fitness > fitness_th): # population[0] is the best individual (since population is sorted in the selection function)
 
+        # Recalculate population size
+        POPULATION_SIZE = round(POPULATION_SIZE_MAX - loop_n*POPULATION_DECREASE)
+
         # Generation count
         loop_n += 1
 
@@ -340,8 +344,6 @@ def evolution(Gp, Time, Input):
         fit.legend(handles=lns, loc='upper right')
         plt.pause(0.01)
 
-        # Recalculate population size
-        POPULATION_SIZE -= POPULATION_DECREASE
 
     # Create best PI controller
     (Gc_num_best,Gc_den_best) = zpk2tf([population[0].Z1, population[0].Z2],[0],population[0].K) # PI controller, 2 parameters: location of 1 zero, value of K, (+ 1 pole always in origin)
@@ -368,8 +370,8 @@ def evolution(Gp, Time, Input):
 
 if __name__ == "__main__":
 
-    if MAX_GEN > POPULATION_SIZE/POPULATION_DECREASE:
-        print('MAX_GEN should be less or equal than POPULATION_SIZE/POPULATION_DECREASE')
+    if POPULATION_SIZE_MAX <= POPULATION_DECREASE*MAX_GEN:
+        print('POPULATION_SIZE_MAX should be bigger than POPULATION_DECREASE*MAX_GEN')
         quit()
 
     # Create Plant to be controlled
