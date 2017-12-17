@@ -43,7 +43,7 @@ MSE_TH = 0.0001
 POPULATION_SIZE_MAX = 10
 POPULATION_SIZE = POPULATION_SIZE_MAX # initial population = max population
 POPULATION_DECREASE = 0 # number of individuals to kill in each generation
-MAX_GEN = 30 # maximum number of generations
+MAX_GEN = 5 # maximum number of generations
 CROSS_OVER_P = 0.5 # probability of crossing over
 MUTATION_COEFF = .01 # minimum mutation value
 
@@ -328,7 +328,12 @@ def evolution(Gp, Time, Input):
     # Number of loops
     loop_n = 0
 
+    # Open plot window
     fig = plt.figure()
+
+    # Maximize plot window
+    mng = plt.get_current_fig_manager()
+    mng.resize(*mng.window.maxsize())
 
     # Keep entering while loop until fitness threshold is reached
     while (loop_n < MAX_GEN and population[0].fitness > fitness_th): # population[0] is the best individual (since population is sorted in the selection function)
@@ -365,12 +370,12 @@ def evolution(Gp, Time, Input):
         plt.clf() # clear plot
 
         plt.subplot(2,2,3)
-        pzmap(Gp, Plot=True, title='Plant')
+        pzmap(Gp, Plot=True, title='Plant P-Z Map')
 
         fit = fig.add_subplot(2,2,1)
         plt.title('Evolution')
         mut = fit.twinx()
-        fit.set_xlabel("Generations")
+        fit.set_xlabel("Generations                                                                              ")
         fit.set_ylabel("Fitness")
         mut.set_ylabel("Mutation [%]")
         p1, = fit.semilogy(fitness_best_vec[1:], color = 'k', label = 'Best fitness')
@@ -448,12 +453,20 @@ if __name__ == "__main__":
     # Plot result
     plt.subplot(2,2,2)
     plt.title('Temporal response')
-    plt.xlabel("Time")
-    plt.plot(T, input_signal, t1, y1, t2, y2)
+    plt.xlabel("Time                                                                                      ")
+    p1, = plt.plot(T, input_signal, label = 'Input')
+    p2, = plt.plot(t1, y1, label = 'Plant response')
+    p3, = plt.plot(t2, y2, label = 'Closed-loop response')
+    lns = [p1, p2, p3]
+    plt.legend(handles=lns, loc='best')
+    
     plt.subplot(2,2,4)
-    pzmap(Gc, Plot=True, title='Controller')
+    pzmap(Gc, Plot=True, title='Controller P-Z Map')
 
 
     # Block until the plot window is closed
     plt.show()
+
+
+
 
