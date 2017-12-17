@@ -23,7 +23,7 @@ STEP_TIME = 0.1
 
 # Plant parameters
 PLANT_ZEROS = [] # empty: no zeros
-PLANT_POLES = [-1, -1.5 + 8j, -1.5 - 8j,  -5 + 3j, -5 - 3j, -10]
+PLANT_POLES = [-1, -1.5 + 8j, -1.5 - 8j, -5 + 3j, -5 - 3j, -10]
 PLANT_K = 100
 
 # Input parameters
@@ -329,6 +329,7 @@ def evolution(Gp, Time, Input):
     for count in range(POPULATION_SIZE):
         x = individual(Gp, Time, Input)
         population.append(x)
+        print(count)
 
     # Number of loops
     loop_n = 0
@@ -418,10 +419,10 @@ def evolution(Gp, Time, Input):
     print('Closed loop transfer:')
     print(M_best)
 
-    return Gc_best, M_best
+    return Gc_best, population[0].K, population[0].DP1, population[0].WN1, population[0].DP2, population[0].WN2, M_best
 
 
-class input_signal(SQLObject):
+class input_signal_(SQLObject):
     in_type = StringCol(length=10, varchar=True)
     final_value = FloatCol()
     final_time = FloatCol()
@@ -456,14 +457,17 @@ class pid(SQLObject):
     wn1 = FloatCol()
     dp2 = FloatCol()
     wn2 = FloatCol()
-    input_signal = ForeignKey('input_signal', default=None)
+    overshoot = FloatCol()
+    rise_time = FloatCol()
+    mse = FloatCol()
+    input_signal_ = ForeignKey('input_signal_', default=None)
     plant = ForeignKey('plant', default=None)
     evolution_type = ForeignKey('plant', default=None)
     simulation_time = ForeignKey('plant', default=None)
 
 def drop_create_tables():
     pid.dropTable(ifExists=True)  # First table to be deleted, since it has de foreign keys
-    input_signal.dropTable(ifExists=True)
+    input_signal_.dropTable(ifExists=True)
     plant.dropTable(ifExists=True)
     evolution_type.dropTable(ifExists=True)
     simulation_time.dropTable(ifExists=True)
@@ -471,8 +475,32 @@ def drop_create_tables():
     simulation_time.createTable()
     evolution_type.createTable()
     plant.createTable()
-    input_signal.createTable()
+    input_signal_.createTable()
     pid.createTable() # Last table to be created, since it has de foreign keys
+    return
+
+def fill_tables(k_best, dp1_best, wn1_best, dp2_best, wn2_best, ov, rt, mse):
+    
+    # Search if the current set of values exist already in the table.
+    query = "SELECT id FROM input_signal_ WHERE in_type = N'%s' AND final_value = %f AND final_time = %f" % (IN_TYPE, FINAL_VALUE, FINAL_TIME)
+    input_signal_res = connection.queryAll(query)
+    if len(input_signal_res) == 0:
+        input_signal_(in_type = IN_TYPE, final_value = FINAL_VALUE, final_time = FINAL_TIME)
+        input_signal_res = connection.queryAll(query)
+
+    # Serialize Plant zeros and ploes lists (converting to string is gives a shorter solution than json)
+    plant_zeros_serial = ''.join(str(e) for e in PLANT_ZEROS)
+    plant_poles_serial = ''.join(str(e) for e in PLANT_POLES)
+
+    # Search if the current set of values exist already in the table.
+    query = "SELECT id FROM plant WHERE k = %f AND zeros = N'%s' AND poles = N'%s'" % (PLANT_K,plant_zeros_serial,plant_poles_serial)
+    plant_res = connection.queryAll(query)
+    if len(plant_res) == 0:
+        plant(k = PLANT_K, zeros = plant_zeros_serial, poles = plant_poles_serial)
+        plant_res = connection.queryAll(query)
+
+    pid(k = k_best, dp1 = dp1_best, wn1 = wn1_best, dp2 = dp2_best, wn2 = wn2_best, overshoot = float(ov), rise_time = rt, mse = float(mse), input_signal_ = input_signal_res[0][0], plant = plant_res[0][0])
+
     return
 
 if __name__ == "__main__":
@@ -506,7 +534,7 @@ if __name__ == "__main__":
     y1, t1, xout = ctrl.lsim(Gp, input_signal, T)
 
     # Run evolution algorithm
-    Gc, M = evolution(Gp, T, input_signal)
+    Gc, K_best, DP1_best, WN1_best, DP2_best, WN2_best, M = evolution(Gp, T, input_signal)
 
     # Closed loop response to input signal
     y2, t2, xout = ctrl.lsim(M, input_signal, T)
@@ -515,6 +543,9 @@ if __name__ == "__main__":
     print('Overshoot: %f %%' % overshoot(y2))
     print('Rise time: %1.2f sec' % rise_time(y2))
     print('MSE: %f' % mse(y2, input_signal))
+
+    # Fill database tables with current simulation data
+    fill_tables(K_best, DP1_best, WN1_best, DP2_best, WN2_best, overshoot(y2), rise_time(y2), mse(y2, input_signal))
 
     # Plot result
     plt.subplot(2,2,2)
