@@ -10,6 +10,11 @@ from math import log10
 import warnings
 import matplotlib.cbook
 warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
+from sqlobject import *
+
+# Declar connection to database
+connection = connectionForURI("mysql://root:root@localhost/GeneticPID")
+sqlhub.processConnection = connection
 
 # Time vector parameters
 START_TIME = 0
@@ -43,7 +48,7 @@ MSE_TH = 0.0001
 POPULATION_SIZE_MAX = 10
 POPULATION_SIZE = POPULATION_SIZE_MAX # initial population = max population
 POPULATION_DECREASE = 0 # number of individuals to kill in each generation
-MAX_GEN = 5 # maximum number of generations
+MAX_GEN = 2 # maximum number of generations
 CROSS_OVER_P = 0.5 # probability of crossing over
 MUTATION_COEFF = .01 # minimum mutation value
 
@@ -416,10 +421,38 @@ def evolution(Gp, Time, Input):
     return Gc_best, M_best
 
 
+class Entrada(SQLObject):
+    in_type = StringCol(length=10, varchar=True)
+    final_value = FloatCol()
+    final_time = FloatCol()
+
+class PID(SQLObject):
+    k = FloatCol()
+    dp1 = FloatCol()
+    wn1 = FloatCol()
+    dp2 = FloatCol()
+    wn2 = FloatCol()
+    entrada = ForeignKey('Entrada', default=None)
+
+def drop_create_tables():
+    PID.dropTable(ifExists=True)  # First table to be deleted, since it has de foreign keys
+    Entrada.dropTable(ifExists=True)
+
+    Entrada.createTable()
+    PID.createTable() # Last table to be created, since it has de foreign keys
+    return
+
 if __name__ == "__main__":
 
     if POPULATION_SIZE_MAX <= POPULATION_DECREASE*MAX_GEN:
         print('POPULATION_SIZE_MAX should be bigger than POPULATION_DECREASE*MAX_GEN')
+        quit()
+
+    ans = input("Delete database and create new one? (Y/N)")
+    if (ans == 'y') or (ans == 'Y'):
+        drop_create_tables()
+    elif (ans != 'n') and (ans != 'N'):
+        print('Input Error')
         quit()
 
     # Create Plant to be controlled
