@@ -421,25 +421,58 @@ def evolution(Gp, Time, Input):
     return Gc_best, M_best
 
 
-class Entrada(SQLObject):
+class input_signal(SQLObject):
     in_type = StringCol(length=10, varchar=True)
     final_value = FloatCol()
     final_time = FloatCol()
 
-class PID(SQLObject):
+class plant(SQLObject):
+    k = FloatCol()
+    zeros = StringCol(length=200, varchar=True) # Undefined lenght floar vector. Store it as string.
+    poles = StringCol(length=200, varchar=True) # Undefined lenght floar vector. Store it as string.
+
+class evolution_type(SQLObject):
+    damping_max = FloatCol()
+    wn_max = FloatCol()
+    k_max = FloatCol()
+    optimization_metric = StringCol(length=10, varchar=True)
+    overshoot_threshold = FloatCol()
+    rise_time_threshold = FloatCol()
+    mse_threshold = FloatCol()
+    population_size = IntCol()
+    population_decrease = FloatCol()
+    maximum_generations = IntCol()
+    cross_over_prob = FloatCol()
+    mutation_min = FloatCol()
+
+class simulation_time(SQLObject):
+    start_time = FloatCol()
+    stop_time = FloatCol()
+    step_time = FloatCol()
+
+class pid(SQLObject):
     k = FloatCol()
     dp1 = FloatCol()
     wn1 = FloatCol()
     dp2 = FloatCol()
     wn2 = FloatCol()
-    entrada = ForeignKey('Entrada', default=None)
+    input_signal = ForeignKey('input_signal', default=None)
+    plant = ForeignKey('plant', default=None)
+    evolution_type = ForeignKey('plant', default=None)
+    simulation_time = ForeignKey('plant', default=None)
 
 def drop_create_tables():
-    PID.dropTable(ifExists=True)  # First table to be deleted, since it has de foreign keys
-    Entrada.dropTable(ifExists=True)
+    pid.dropTable(ifExists=True)  # First table to be deleted, since it has de foreign keys
+    input_signal.dropTable(ifExists=True)
+    plant.dropTable(ifExists=True)
+    evolution_type.dropTable(ifExists=True)
+    simulation_time.dropTable(ifExists=True)
 
-    Entrada.createTable()
-    PID.createTable() # Last table to be created, since it has de foreign keys
+    simulation_time.createTable()
+    evolution_type.createTable()
+    plant.createTable()
+    input_signal.createTable()
+    pid.createTable() # Last table to be created, since it has de foreign keys
     return
 
 if __name__ == "__main__":
@@ -448,7 +481,7 @@ if __name__ == "__main__":
         print('POPULATION_SIZE_MAX should be bigger than POPULATION_DECREASE*MAX_GEN')
         quit()
 
-    ans = input("Delete database and create new one? (Y/N)")
+    ans = input("Delete database tables and create new ones? (Y/N)")
     if (ans == 'y') or (ans == 'Y'):
         drop_create_tables()
     elif (ans != 'n') and (ans != 'N'):
