@@ -499,7 +499,14 @@ def fill_tables(k_best, dp1_best, wn1_best, dp2_best, wn2_best, ov, rt, mse):
         plant(k = PLANT_K, zeros = plant_zeros_serial, poles = plant_poles_serial)
         plant_res = connection.queryAll(query)
 
-    pid(k = k_best, dp1 = dp1_best, wn1 = wn1_best, dp2 = dp2_best, wn2 = wn2_best, overshoot = float(ov), rise_time = rt, mse = float(mse), input_signal_ = input_signal_res[0][0], plant = plant_res[0][0])
+# Search if the current set of values exist already in the table.
+    query = "SELECT id FROM evolution_type WHERE damping_max = %f AND wn_max = %f AND k_max = %f AND optimization_metric = N'%s' AND overshoot_threshold = %f AND rise_time_threshold = %f AND mse_threshold = %f AND population_size = %d AND population_decrease = %f AND maximum_generations = %d AND cross_over_prob = %f AND mutation_min = %f" % (DAMPING_MAX, WN_MAX, K_MAX, OPTIMIZE, OVERSHOOT_TH, RISE_TIME_TH, MSE_TH, POPULATION_SIZE_MAX, POPULATION_DECREASE, MAX_GEN, CROSS_OVER_P, MUTATION_COEFF)
+    evolution_type_res = connection.queryAll(query)
+    if len(evolution_type_res) == 0:
+        evolution_type(damping_max = DAMPING_MAX, wn_max = WN_MAX, k_max = K_MAX, optimization_metric = OPTIMIZE, overshoot_threshold = OVERSHOOT_TH, rise_time_threshold = RISE_TIME_TH, mse_threshold = MSE_TH, population_size = POPULATION_SIZE_MAX, population_decrease = POPULATION_DECREASE, maximum_generations = MAX_GEN, cross_over_prob = CROSS_OVER_P, mutation_min = MUTATION_COEFF)
+        evolution_type_res = connection.queryAll(query)
+
+    pid(k = k_best, dp1 = dp1_best, wn1 = wn1_best, dp2 = dp2_best, wn2 = wn2_best, overshoot = float(ov), rise_time = rt, mse = float(mse), input_signal_ = input_signal_res[0][0], plant = plant_res[0][0], evolution_type = evolution_type_res[0][0])
 
     return
 
