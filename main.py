@@ -326,10 +326,11 @@ def evolution(Gp, Time, Input):
     mutation_ave_vec = np.array([0])
 
     # Create random population
+    print("Creating population: ", end = "", flush = True)
     for count in range(POPULATION_SIZE):
+        print(count, end = " ", flush = True)
         x = individual(Gp, Time, Input)
         population.append(x)
-        print(count)
 
     # Number of loops
     loop_n = 0
@@ -404,7 +405,7 @@ def evolution(Gp, Time, Input):
     # Best closed loop system
     M_best = ctrl.feedback(Gc_best*Gp,1)
 
-    print('\nTotal number of generations: %d' % loop_n)
+    print('\n\nTotal number of generations: %d' % loop_n)
 
     # Print controller information
     print('\nController:\n')
