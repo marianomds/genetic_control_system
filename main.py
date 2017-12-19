@@ -373,7 +373,7 @@ def evolution(Gp, Time, Input):
     print('\n\nTotal number of generations: %d' % loop_n)
 
     # Print controller information
-    print('\nController:\n')
+    print('\nCONTROLLER:\n')
     print('K: %f' % population[0].K)
     print('Damping Ratio 1: %f' % population[0].DP1)
     print('Natural Frequency 1: %f' % population[0].WN1)
@@ -382,7 +382,7 @@ def evolution(Gp, Time, Input):
     print(Gc_best)
 
     # Print closed loop transfer function
-    print('Closed loop transfer:')
+    print('CLOSED LOOP:')
     print(M_best)
 
     return Gc_best, population[0].K, population[0].DP1, population[0].WN1, population[0].DP2, population[0].WN2, M_best
@@ -524,7 +524,7 @@ if __name__ == "__main__":
     Gp = ctrl.tf(Gp_num,Gp_den)
 
     # Print transfer function of plant to be controlled
-    print('Plant:')
+    print('\nPLANT:')
     print(Gp)
 
     # Create time vector to be used
