@@ -508,8 +508,8 @@ def fill_tables(k_best, dp1_best, wn1_best, dp2_best, wn2_best, ov, rt, mse):
 
 if __name__ == "__main__":
 
-    if POPULATION_SIZE_MAX <= POPULATION_DECREASE*MAX_GEN:
-        print('POPULATION_SIZE_MAX should be bigger than POPULATION_DECREASE*MAX_GEN')
+    if POPULATION_SIZE_MAX <= (POPULATION_DECREASE*MAX_GEN + 3):
+        print('POPULATION_SIZE_MAX should be bigger than POPULATION_DECREASE*MAX_GEN + 3')
         quit()
 
     ans = input("Delete database tables and create new ones? (Y/N)")
