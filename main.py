@@ -29,7 +29,7 @@ PLANT_K = 100
 # Input parameters
 FINAL_VALUE = 1
 FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
-IN_TYPE = 'STEP' # Options: 'STEP', 'RAMP', 'SIGMOID'
+IN_TYPE = 'RAMP' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
 DAMPING_MAX = 10 # Maximum damping ratio
@@ -422,30 +422,35 @@ def evolution(Gp, Time, Input):
 
     return Gc_best, population[0].K, population[0].DP1, population[0].WN1, population[0].DP2, population[0].WN2, M_best
 
+class input_type(SQLObject):
+    in_type = StringCol(length=10, varchar=True)
 
 class input_signal_(SQLObject):
-    in_type = StringCol(length=10, varchar=True)
     final_value = FloatCol()
     final_time = FloatCol()
+    input_type = ForeignKey('input_type', default=None)
 
 class plant(SQLObject):
     k = FloatCol()
     zeros = StringCol(length=200, varchar=True) # Undefined lenght floar vector. Store it as string.
     poles = StringCol(length=200, varchar=True) # Undefined lenght floar vector. Store it as string.
 
-class evolution_type(SQLObject):
-    damping_max = FloatCol()
-    wn_max = FloatCol()
-    k_max = FloatCol()
+class optimization(SQLObject):
     optimization_metric = StringCol(length=10, varchar=True)
     overshoot_threshold = FloatCol()
     rise_time_threshold = FloatCol()
     mse_threshold = FloatCol()
+
+class evolution_type(SQLObject):
+    damping_max = FloatCol()
+    wn_max = FloatCol()
+    k_max = FloatCol()
     population_size = IntCol()
     population_decrease = FloatCol()
     maximum_generations = IntCol()
     cross_over_prob = FloatCol()
     mutation_min = FloatCol()
+    optimization = ForeignKey('optimization', default=None)
 
 class simulation_time(SQLObject):
     start_time = FloatCol()
@@ -472,7 +477,11 @@ def drop_create_tables():
     plant.dropTable(ifExists=True)
     evolution_type.dropTable(ifExists=True)
     simulation_time.dropTable(ifExists=True)
+    input_type.dropTable(ifExists=True)
+    optimization.dropTable(ifExists=True)
 
+    optimization.createTable()
+    input_type.createTable()
     simulation_time.createTable()
     evolution_type.createTable()
     plant.createTable()
@@ -481,12 +490,19 @@ def drop_create_tables():
     return
 
 def fill_tables(k_best, dp1_best, wn1_best, dp2_best, wn2_best, ov, rt, mse):
+
+    # Search if the current set of values exist already in the table.
+    query = "SELECT id FROM input_type WHERE in_type = N'%s'" % (IN_TYPE)
+    input_type_res = connection.queryAll(query)
+    if len(input_type_res) == 0:
+        input_type(in_type = IN_TYPE)
+        input_type_res = connection.queryAll(query)
     
     # Search if the current set of values exist already in the table.
-    query = "SELECT id FROM input_signal_ WHERE in_type = N'%s' AND final_value = %f AND final_time = %f" % (IN_TYPE, FINAL_VALUE, FINAL_TIME)
+    query = "SELECT id FROM input_signal_ WHERE input_type_id = %d AND final_value = %f AND final_time = %f" % (input_type_res[0][0], FINAL_VALUE, FINAL_TIME)
     input_signal_res = connection.queryAll(query)
     if len(input_signal_res) == 0:
-        input_signal_(in_type = IN_TYPE, final_value = FINAL_VALUE, final_time = FINAL_TIME)
+        input_signal_(input_type = input_type_res[0][0], final_value = FINAL_VALUE, final_time = FINAL_TIME)
         input_signal_res = connection.queryAll(query)
 
     # Serialize Plant zeros and ploes lists (converting to string is gives a shorter solution than json)
@@ -501,10 +517,17 @@ def fill_tables(k_best, dp1_best, wn1_best, dp2_best, wn2_best, ov, rt, mse):
         plant_res = connection.queryAll(query)
 
     # Search if the current set of values exist already in the table.
-    query = "SELECT id FROM evolution_type WHERE damping_max = %f AND wn_max = %f AND k_max = %f AND optimization_metric = N'%s' AND overshoot_threshold = %f AND rise_time_threshold = %f AND mse_threshold = %f AND population_size = %d AND population_decrease = %f AND maximum_generations = %d AND cross_over_prob = %f AND mutation_min = %f" % (DAMPING_MAX, WN_MAX, K_MAX, OPTIMIZE, OVERSHOOT_TH, RISE_TIME_TH, MSE_TH, POPULATION_SIZE_MAX, POPULATION_DECREASE, MAX_GEN, CROSS_OVER_P, MUTATION_COEFF)
+    query = "SELECT id FROM optimization WHERE optimization_metric = N'%s' AND overshoot_threshold = %f AND rise_time_threshold = %f AND mse_threshold = %f" % (OPTIMIZE, OVERSHOOT_TH, RISE_TIME_TH, MSE_TH)
+    optimization_res = connection.queryAll(query)
+    if len(optimization_res) == 0:
+        optimization(optimization_metric = OPTIMIZE, overshoot_threshold = OVERSHOOT_TH, rise_time_threshold = RISE_TIME_TH, mse_threshold = MSE_TH)
+        optimization_res = connection.queryAll(query)
+
+    # Search if the current set of values exist already in the table.
+    query = "SELECT id FROM evolution_type WHERE optimization_id = %d AND damping_max = %f AND wn_max = %f AND k_max = %f AND  population_size = %d AND population_decrease = %f AND maximum_generations = %d AND cross_over_prob = %f AND mutation_min = %f" % (optimization_res[0][0], DAMPING_MAX, WN_MAX, K_MAX, POPULATION_SIZE_MAX, POPULATION_DECREASE, MAX_GEN, CROSS_OVER_P, MUTATION_COEFF)
     evolution_type_res = connection.queryAll(query)
     if len(evolution_type_res) == 0:
-        evolution_type(damping_max = DAMPING_MAX, wn_max = WN_MAX, k_max = K_MAX, optimization_metric = OPTIMIZE, overshoot_threshold = OVERSHOOT_TH, rise_time_threshold = RISE_TIME_TH, mse_threshold = MSE_TH, population_size = POPULATION_SIZE_MAX, population_decrease = POPULATION_DECREASE, maximum_generations = MAX_GEN, cross_over_prob = CROSS_OVER_P, mutation_min = MUTATION_COEFF)
+        evolution_type(optimization = optimization_res[0][0], damping_max = DAMPING_MAX, wn_max = WN_MAX, k_max = K_MAX, population_size = POPULATION_SIZE_MAX, population_decrease = POPULATION_DECREASE, maximum_generations = MAX_GEN, cross_over_prob = CROSS_OVER_P, mutation_min = MUTATION_COEFF)
         evolution_type_res = connection.queryAll(query)
 
     # Search if the current set of values exist already in the table.
