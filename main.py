@@ -29,7 +29,7 @@ PLANT_K = 100
 # Input parameters
 FINAL_VALUE = 1
 FINAL_TIME = 5 # MUST BE: FINAL_TIME < STOP_TIME
-IN_TYPE = 'RAMP' # Options: 'STEP', 'RAMP', 'SIGMOID'
+IN_TYPE = 'STEP' # Options: 'STEP', 'RAMP', 'SIGMOID'
 
 # Limit values for controller parameters
 DAMPING_MAX = 10 # Maximum damping ratio
@@ -48,7 +48,7 @@ MSE_TH = 0.0001
 POPULATION_SIZE_MAX = 10
 POPULATION_SIZE = POPULATION_SIZE_MAX # initial population = max population
 POPULATION_DECREASE = 0 # number of individuals to kill in each generation
-MAX_GEN = 2 # maximum number of generations
+MAX_GEN = 5 # maximum number of generations
 CROSS_OVER_P = 0.5 # probability of crossing over
 MUTATION_COEFF = .01 # minimum mutation value
 
@@ -463,8 +463,8 @@ class pid(SQLObject):
     mse = FloatCol()
     input_signal_ = ForeignKey('input_signal_', default=None)
     plant = ForeignKey('plant', default=None)
-    evolution_type = ForeignKey('plant', default=None)
-    simulation_time = ForeignKey('plant', default=None)
+    evolution_type = ForeignKey('evolution_type', default=None)
+    simulation_time = ForeignKey('simulation_time', default=None)
 
 def drop_create_tables():
     pid.dropTable(ifExists=True)  # First table to be deleted, since it has de foreign keys
