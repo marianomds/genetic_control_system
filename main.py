@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 from sqlobject import *
 from defs import *
 
-# Declar connection to database
+# Declare connection to database
 connection = connectionForURI("mysql://root:root@localhost/GeneticPID")
 sqlhub.processConnection = connection
 
@@ -54,8 +54,8 @@ def mse(signal1, signal2): # Mean squared error
 
 def evaluate(x, y):
     # Return fitness evaluation depending on metric to optimize
-    if OPTIMIZE == 'OV':
-        return overshoot(y)
+    if OPTIMIZE == 'OV_MSE':
+        return (overshoot(y) + 100*mse(x, y))
     elif OPTIMIZE == 'RT':
         return rise_time(y)
     elif OPTIMIZE == 'MSE':
@@ -272,8 +272,8 @@ def evolution(Gp, Time, Input):
     global POPULATION_SIZE
 
     # Select fitness threshold depending on metric to optimize
-    if OPTIMIZE == 'OV':
-        fitness_th = OVERSHOOT_TH
+    if OPTIMIZE == 'OV_MSE':
+        fitness_th = OVERSHOOT_MSE_TH
     elif OPTIMIZE == 'RT':
         fitness_th = RISE_TIME_TH
     elif OPTIMIZE == 'MSE':
@@ -402,7 +402,7 @@ class plant(SQLObject):
 
 class optimization(SQLObject):
     optimization_metric = StringCol(length=10, varchar=True)
-    overshoot_threshold = FloatCol()
+    overshoot_mse_threshold = FloatCol()
     rise_time_threshold = FloatCol()
     mse_threshold = FloatCol()
 
@@ -482,10 +482,10 @@ def fill_tables(k_best, dp1_best, wn1_best, dp2_best, wn2_best, ov, rt, mse):
         plant_res = connection.queryAll(query)
 
     # Search if the current set of values exist already in the table.
-    query = "SELECT id FROM optimization WHERE optimization_metric = N'%s' AND overshoot_threshold = %f AND rise_time_threshold = %f AND mse_threshold = %f" % (OPTIMIZE, OVERSHOOT_TH, RISE_TIME_TH, MSE_TH)
+    query = "SELECT id FROM optimization WHERE optimization_metric = N'%s' AND overshoot_mse_threshold = %f AND rise_time_threshold = %f AND mse_threshold = %f" % (OPTIMIZE, OVERSHOOT_MSE_TH, RISE_TIME_TH, MSE_TH)
     optimization_res = connection.queryAll(query)
     if len(optimization_res) == 0:
-        optimization(optimization_metric = OPTIMIZE, overshoot_threshold = OVERSHOOT_TH, rise_time_threshold = RISE_TIME_TH, mse_threshold = MSE_TH)
+        optimization(optimization_metric = OPTIMIZE, overshoot_mse_threshold = OVERSHOOT_MSE_TH, rise_time_threshold = RISE_TIME_TH, mse_threshold = MSE_TH)
         optimization_res = connection.queryAll(query)
 
     # Search if the current set of values exist already in the table.
