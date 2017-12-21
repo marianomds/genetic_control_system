@@ -27,8 +27,8 @@ def create_input():
     elif IN_TYPE == 'RAMP':
         input_signal = np.arange(START_TIME, FINAL_TIME, STEP_TIME)*(FINAL_VALUE/FINAL_TIME)
     elif IN_TYPE == 'SIGMOID':
-        x_tanh = np.arange(START_TIME, FINAL_TIME, STEP_TIME)
-        input_signal = sigmoid(x_tanh*(12/FINAL_TIME) - 6) * FINAL_VALUE
+        x_sigmoid = np.arange(START_TIME, FINAL_TIME, STEP_TIME)
+        input_signal = sigmoid(x_sigmoid*(12/FINAL_TIME) - 6) * FINAL_VALUE
     else:
         print('Incorrect input type.')
         quit()
