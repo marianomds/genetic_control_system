@@ -205,6 +205,7 @@ class individual():
             self.DP2 = np.random.uniform(0, DAMPING_MAX)
             self.WN2 = np.random.uniform(0, WN_MAX)
 
+            # Compute location of zeros
             (self.Z1,self.Z2) = np.roots([1, 2*self.DP1*self.WN1, self.WN1**2])
             (self.Z3,self.Z4) = np.roots([1, 2*self.DP2*self.WN2, self.WN2**2])
 
@@ -242,6 +243,7 @@ class individual():
 
     def fitness_calc(self, Gp, Time, Input):
 
+            # Compute location of zeros
             (self.Z1,self.Z2) = np.roots([1, 2*self.DP1*self.WN1, self.WN1**2])
             (self.Z3,self.Z4) = np.roots([1, 2*self.DP2*self.WN2, self.WN2**2])
 
@@ -321,20 +323,24 @@ def evolution(Gp, Time, Input):
         population, mutation_average = mutation(population,fitness_th)
         population = selection(population, Gp, Time, Input)
 
+        # Compute average fitness vector for plotting
         fitness_ave = 0
         for ind in range(0,POPULATION_SIZE):
             fitness_ave += population[ind].fitness
         fitness_ave /= POPULATION_SIZE
 
+        # Save history of average fitness in a vector for plotting
         fitness_ave_vec = np.append(fitness_ave_vec, fitness_ave)
 
-        # Save history of best fitness in a vector for plotting
+        # Check that evolution is working
         if population[0].fitness > fitness_best_vec[-1]: # New best individual should not be worse than previous
             print('Evolution problem!')
             quit()
 
+        # Save history of best fitness in a vector for plotting
         fitness_best_vec = np.append(fitness_best_vec, population[0].fitness)
 
+        # Save history of average mutation in a vector for plotting
         mutation_ave_vec = np.append(mutation_ave_vec, mutation_average)
 
         # Real time plot of history of best fitness
@@ -360,10 +366,11 @@ def evolution(Gp, Time, Input):
         plt.pause(0.01)
 
 
+    # Compute location of zeros of best individual
     (population[0].Z1,population[0].Z2) = np.roots([1, 2*population[0].DP1*population[0].WN1, population[0].WN1**2])
     (population[0].Z3,population[0].Z4) = np.roots([1, 2*population[0].DP2*population[0].WN2, population[0].WN2**2])
 
-    # Create best controller
+    # Create controller of best individual
     (Gc_num_best,Gc_den_best) = zpk2tf([population[0].Z1, population[0].Z2, population[0].Z3, population[0].Z4],[0],population[0].K) # Controller with one pole in origin and 2 pair of zeros
     Gc_best = ctrl.tf(Gc_num_best,Gc_den_best)
 
