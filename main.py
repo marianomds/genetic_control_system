@@ -43,7 +43,7 @@ def overshoot(signal):
     return (signal.max() - FINAL_VALUE)*100 # in percent
 
 def rise_time(signal):
-    result = next((varvec[0] for varvec in enumerate(signal) if varvec[1] > signal[-1]), signal.size)
+    result = next((varvec[0] for varvec in enumerate(signal) if varvec[1] > FINAL_VALUE), signal.size)
     if IN_TYPE == 'STEP':
         return (result * STEP_TIME) - FINAL_TIME
     else:

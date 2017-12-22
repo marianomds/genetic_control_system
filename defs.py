@@ -25,7 +25,7 @@ OPTIMIZE = 'OV_MSE' # Options: 'OV_MSE', 'RT, 'MSE'
 
 # Threshold values for algorithm convergence
 OVERSHOOT_MSE_TH = 0.03
-RISE_TIME_TH = 11
+RISE_TIME_TH = 0.01
 MSE_TH = 0.001
 
 # Genetic algorithm parameters
