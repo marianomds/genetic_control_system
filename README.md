@@ -15,4 +15,4 @@ Instructions
 ============
 
 - Run GeneticPID.sql script for creating database.
-- Each time main.py is run, it's configuration and results are stored in the database.
+- Each time main.py is run, its configuration and results are stored in the database.
